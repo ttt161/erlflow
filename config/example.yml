@@ -1,0 +1,79 @@
+
+- proto:
+    match: 17
+  port:
+    match: 5060
+  action:
+    attributes:
+      - src_addr
+      - dst_addr
+    ext_attributes:
+      service.name: SIP
+
+- proto:
+    match: 17
+  port:
+    match: 40000-40102
+  action:
+    attributes:
+      - src_addr
+      - dst_addr
+    ext_attributes:
+      service.name: SIP
+
+
+- src_addr:
+    match: 12.0.0.7/32
+  dst_addr:
+    dismatch: 10.0.0.0/8
+  proto:
+    match: 6
+  src_port:
+    match: 4000-4100
+  dst_port:
+    match: 4000-4100
+  port:
+    match: 4000-4100
+  tos:
+    match: 0
+  action:
+    attributes:
+      - src_addr
+      - dst_addr
+      - src_port
+      - dst_port
+      - port # min(src_port, dst_port) not is_ephemeral ? min(src_port, dst_port) ! 0
+      - proto
+      - tos
+    ext_attributes:
+      service.name: myApplication
+      service.instance: Instance1
+
+- src_addr:
+    match: 12.0.0.7/32
+  dst_addr:
+    dismatch: 10.0.0.0/8
+  proto:
+    match: 6
+  port:
+    match: 22
+  action:
+    ext_attributes:
+      some.attr.name: 333
+
+- src_addr:
+    match: 12.0.0.7/32
+  dst_addr:
+    dismatch: 10.0.0.0/8
+  proto:
+    match: 6
+  port:
+    match: 22
+  action: reject
+
+# default action
+- src_addr:
+    match: 0.0.0.0/0
+  action:
+    ext_attributes:
+      ext_description: unclassified

@@ -1,0 +1,19 @@
+{application, erlflow,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {erlflow_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    yamerl,
+    xxhash,
+    prometheus,
+    cowboy
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

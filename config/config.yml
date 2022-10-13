@@ -1,0 +1,56 @@
+# drop all info about loopback
+- src_addr:
+    match: 127.0.0.1/32
+  action: reject
+
+- dst_addr:
+    match: 127.0.0.1/32
+  action: reject
+
+# mark internal traffic
+- src_addr:
+    match: 10.0.0.0/24
+  dst_addr:
+    match: 10.0.0.0/24
+  action:
+    key_suffix: _local
+    attributes:
+      - src_addr
+      - dst_addr
+      - port
+      - proto
+    ext_attributes:
+      area: internal
+
+# mark upload to internet
+- src_addr:
+    match: 10.0.0.0/24
+  dst_addr:
+    dismatch: 10.0.0.0/24
+  action:
+    key_suffix: _to_internet
+    attributes:
+      - src_addr
+      - dst_addr
+    ext_attributes:
+      area: external
+      direction: upload
+
+# mark download from internet
+- src_addr:
+    dismatch: 10.0.0.0/24
+  dst_addr:
+    match: 10.0.0.0/24
+  action:
+    key_suffix: _from_internet
+    attributes:
+      - src_addr
+      - dst_addr
+    ext_attributes:
+      area: external
+      direction: download
+
+# default action reject
+- src_addr:
+    match: 0.0.0.0/0
+  action: reject
