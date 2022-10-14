@@ -13,9 +13,7 @@
     code_change/3]).
 
 -export([
-    flow_info/2,
-    collect/0,
-    collect/1
+    flow_info/2
 ]).
 
 -include_lib("netflow/include/netflow_v5.hrl").
@@ -29,10 +27,6 @@
 -record(erlflow_collector_state, {
     flows = #{},
     timers = #{},
-    bytes_accumulator = 0,
-    packets_accumulator = 0,
-    last_collected_ts,
-    attributes = #{},
     labels = <<>>,
     bytes_key,
     packets_key
@@ -50,20 +44,6 @@ flow_info(FlowRec, {Suffix, Attributes}) ->
         Pid when is_pid(Pid) -> gen_server:cast(Pid, {flow_info, FlowRec})
     end.
 
-collect() ->
-    collect(<<>>).
-
-collect(InitAcc) ->
-    ConstructorMod = application:get_env(erlflow, metric_constructor, undefined),
-    {ok, RegisterTable} = erlflow_register:all_collectors(),
-    Result = lists:foldl(fun({_Name, Pid}, Acc) ->
-        try gen_server:call(Pid, {collect, ConstructorMod}) of
-            {ok, Metrics} -> metrics_concat(ConstructorMod, Metrics, Acc)
-        catch _:_ -> Acc
-        end
-    end, InitAcc, RegisterTable),
-    assemble_metrics(ConstructorMod, Result).
-
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
@@ -75,57 +55,24 @@ start_link(Hash, FlowRec, Attributes, Suffix) ->
     gen_server:start_link({via, erlflow_register, Hash}, ?MODULE, [FlowRec, Attributes, Suffix], []).
 
 init([FlowRec, Attributes, Suffix]) ->
-    ConstructorMod = application:get_env(erlflow, metric_constructor, undefined),
     {LabelNames, LabelValues} = lists:unzip(maps:to_list(Attributes)),
     BytesKey = erlang:list_to_atom("netflow_bytes_sent" ++ Suffix),
     PacketsKey = erlang:list_to_atom("netflow_packets_sent" ++ Suffix),
-    case ConstructorMod of
-        undefined ->
-            prometheus_counter:declare([
-                {registry, erlflow},
-                {name, BytesKey},
-                {help, "The total bytes sent in direction"},
-                {labels, LabelNames}
-            ]),
-            prometheus_counter:declare([
-                {registry, erlflow},
-                {name, PacketsKey},
-                {help, "The total packets sent in direction"},
-                {labels, LabelNames}
-            ]);
-        Module ->
-            Module:create_metrics(Attributes)
-    end,
-    NewState = process(FlowRec, #erlflow_collector_state{}),
-    {ok, NewState#erlflow_collector_state{last_collected_ts = erlang:system_time(nanosecond), labels = LabelValues,
-        attributes = Attributes, bytes_key = BytesKey, packets_key = PacketsKey}}.
+    prometheus_counter:declare([
+        {registry, erlflow},
+        {name, BytesKey},
+        {help, "The total bytes sent in direction"},
+        {labels, LabelNames}
+    ]),
+    prometheus_counter:declare([
+        {registry, erlflow},
+        {name, PacketsKey},
+        {help, "The total packets sent in direction"},
+        {labels, LabelNames}
+    ]),
+    NewState = process(FlowRec, #erlflow_collector_state{labels = LabelValues, bytes_key = BytesKey, packets_key = PacketsKey}),
+    {ok, NewState}.
 
-handle_call({collect, ConstructorMod}, _From, State = #erlflow_collector_state{
-        last_collected_ts = LastTs,
-        bytes_accumulator = BytesAcc,
-        packets_accumulator = PackAcc,
-        attributes = Attributes,
-        labels = Labels,
-        bytes_key = BytesKey,
-        packets_key = PacketsKey}) ->
-
-    NowTs = erlang:system_time(nanosecond),
-    Metrics = case ConstructorMod of
-        undefined ->
-            update_prometheus_metrics(BytesAcc, PackAcc, Labels, BytesKey, PacketsKey);
-        Module ->
-            BaseMap = #{
-                timestamp_nano => NowTs,
-                start_timestamp_nano => LastTs,
-                attributes => Attributes
-            },
-            Data = [
-                BaseMap#{key => BytesKey, value => BytesAcc},
-                BaseMap#{key => PacketsKey, value => PackAcc}
-            ],
-            Module:update_metrics(Data)
-    end,
-    {reply, {ok, Metrics}, State#erlflow_collector_state{last_collected_ts = NowTs, bytes_accumulator = 0, packets_accumulator = 0}};
 handle_call(_Request, _From, State = #erlflow_collector_state{}) ->
     {reply, ok, State}.
 
@@ -151,20 +98,19 @@ code_change(_OldVsn, State = #erlflow_collector_state{}, _Extra) ->
 %%%===================================================================
 
 process(#nfrec_v5{d_octets = Bytes, d_pkts = Packets} = FlowRec, #erlflow_collector_state{flows = Flows, timers = Timers,
-        bytes_accumulator = BytesAcc, packets_accumulator = PacketAcc} = State) ->
+        labels = Labels, bytes_key = BytesKey, packets_key = PacketsKey} = State) ->
 
-    Key = ?FLOW_SIGN(FlowRec),
+    Key = erlflow_utils:flow_sign(FlowRec),
     #nfrec_v5{
         d_octets = LastBytes,
         d_pkts = LastPackets
     } = maps:get(Key, Flows, ?NEW_FLOW),
     NewTref = restart_timer(Key, Timers),
-    %% TODO
+    prometheus_counter:inc(erlflow, BytesKey, Labels, unsigned_delta(Bytes, LastBytes)),
+    prometheus_counter:inc(erlflow, PacketsKey, Labels, unsigned_delta(Packets, LastPackets)),
     State#erlflow_collector_state{
         flows = Flows#{Key => FlowRec},
-        timers = Timers#{Key => NewTref},
-        bytes_accumulator = Bytes - LastBytes + BytesAcc,
-        packets_accumulator = Packets - LastPackets + PacketAcc
+        timers = Timers#{Key => NewTref}
     }.
 
 restart_timer(Key, Timers) when is_map_key(Key, Timers) ->
@@ -174,16 +120,5 @@ restart_timer(Key, Timers) when is_map_key(Key, Timers) ->
 restart_timer(Key, _Timers) ->
     erlang:start_timer(?INACTIVITY_TIMEOUT, self(), {drop_flow_info, Key}).
 
-update_prometheus_metrics(Bytes, Packets, Labels, BytesKey, PacketsKey) ->
-    prometheus_counter:inc(erlflow, BytesKey, Labels, Bytes),
-    prometheus_counter:inc(erlflow, PacketsKey, Labels, Packets).
-
-metrics_concat(undefined, _Metrics, _Acc) ->
-    skip;
-metrics_concat(Module, Metrics, Acc) ->
-    Module:metrics_concat(Metrics, Acc).
-
-assemble_metrics(undefined, _Result) ->
-    prometheus_text_format:format(erlflow);
-assemble_metrics(Module, Result) ->
-    Module:assemble_metrics(Result).
+unsigned_delta(Current, Last) when Current > Last -> Current - Last;
+unsigned_delta(_Current, _Last) -> 0.

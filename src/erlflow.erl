@@ -157,11 +157,11 @@ parse_condition(Condition) ->
 
 process(SensorAddress, RecordsList, Rules) ->
     lists:foreach(fun(FlowRec) ->
-        Key = ?FLOW_SIGN(FlowRec),
+        Key = erlflow_utils:flow_sign(FlowRec),
         case ets:lookup(?CACHE_TABLE, Key) of
             [{_, MetaData, OldTref}] ->
-                erlflow_collector:flow_info(FlowRec, MetaData),
                 erlang:cancel_timer(OldTref),
+                erlflow_collector:flow_info(FlowRec, MetaData),
                 Tref = erlang:start_timer(?INACTIVITY_TIMEOUT, self(), {cleanup, Key}),
                 ets:insert(?CACHE_TABLE, {Key, MetaData, Tref});
             [] ->

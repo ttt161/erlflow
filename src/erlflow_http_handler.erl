@@ -22,6 +22,6 @@ content_types_provided(Req, State) ->
     ], Req, State}.
 
 process(Req, State) ->
-    Data = erlflow_collector:collect(),
+    Data = prometheus_text_format:format(erlflow),
     Req1 = cowboy_req:reply(200, #{<<"content-type">> => <<"text/html">>}, unicode:characters_to_list(Data), Req),
     {stop, Req1, State}.

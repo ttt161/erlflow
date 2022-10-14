@@ -1,10 +1,10 @@
 -module(erlflow_utils).
--author("losto").
-
+-include_lib("netflow/include/netflow_v5.hrl").
 %% API
 -export([
     from_list_recursive/1,
-    to_binary/1
+    to_binary/1,
+    flow_sign/1
 ]).
 
 
@@ -45,3 +45,6 @@ internal_recursive([H | T], Acc) ->
 to_binary(Value) when is_list(Value) -> unicode:characters_to_binary(Value);
 to_binary(Value) when is_integer(Value) -> erlang:integer_to_binary(Value);
 to_binary(Value) when is_atom(Value) -> erlang:atom_to_binary(Value).
+
+flow_sign(#nfrec_v5{src_addr = SrcAddr, src_port = SrcPort, dst_addr = DstAddr, dst_port = DstPort, prot = Proto,
+    tos = Tos, first = StartTimestamp}) -> {SrcAddr, SrcPort, DstAddr, DstPort, Proto, Tos, StartTimestamp}.
