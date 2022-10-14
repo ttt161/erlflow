@@ -19,14 +19,12 @@
 ]).
 
 -include_lib("netflow/include/netflow_v5.hrl").
+-include("erlflow.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(NEW_FLOW, #nfrec_v5{d_pkts = 0, d_octets = 0}).
--define(FLOW_SIGN(SrcAddr, SrcPort, DstAddr, DstPort, Proto, Tos, StartTimestamp),
-    {SrcAddr, SrcPort, DstAddr, DstPort, Proto, Tos, StartTimestamp}
-).
--define(INACTIVITY_TIMEOUT, 300000).
+
 
 -record(erlflow_collector_state, {
     flows = #{},
@@ -44,6 +42,7 @@
 %%% API
 %%%===================================================================
 
+flow_info(_FlowRec, reject) -> skip;
 flow_info(FlowRec, {Suffix, Attributes}) ->
     Hash = xxhash:hash64(term_to_binary(Attributes)),
     case erlflow_register:whereis_name(Hash) of
@@ -151,27 +150,16 @@ code_change(_OldVsn, State = #erlflow_collector_state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-process(#nfrec_v5{
-            %% sign fields
-            src_addr = SrcAddr,
-            src_port = SrcPort,
-            dst_addr = DstAddr,
-            dst_port = DstPort,
-            prot = Proto,
-            tos = Tos,
-            first = StartTimestamp,
-            %% data
-            d_octets = Bytes,
-            d_pkts = Packets
-        } = FlowRec,
-        #erlflow_collector_state{flows = Flows, timers = Timers, bytes_accumulator = BytesAcc, packets_accumulator = PacketAcc} = State) ->
+process(#nfrec_v5{d_octets = Bytes, d_pkts = Packets} = FlowRec, #erlflow_collector_state{flows = Flows, timers = Timers,
+        bytes_accumulator = BytesAcc, packets_accumulator = PacketAcc} = State) ->
 
-    Key = ?FLOW_SIGN(SrcAddr, SrcPort, DstAddr, DstPort, Proto, Tos, StartTimestamp),
+    Key = ?FLOW_SIGN(FlowRec),
     #nfrec_v5{
         d_octets = LastBytes,
         d_pkts = LastPackets
     } = maps:get(Key, Flows, ?NEW_FLOW),
     NewTref = restart_timer(Key, Timers),
+    %% TODO
     State#erlflow_collector_state{
         flows = Flows#{Key => FlowRec},
         timers = Timers#{Key => NewTref},

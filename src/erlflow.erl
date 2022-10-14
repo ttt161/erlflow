@@ -32,8 +32,10 @@
 -define(DEFAULT_CONFIG_PATH, "config/config.yml").
 -define(DEFAULT_LISTEN_PORT, 9555).
 -define(DEFAULT_DYNAMIC_PORTS, {49152, 65535}).
+-define(CACHE_TABLE, flows_cache).
 
 -include_lib("netflow/include/netflow_v5.hrl").
+-include("erlflow.hrl").
 
 -record(erlflow_state, {socket, rules}).
 
@@ -46,6 +48,7 @@ start_link() ->
 
 init([]) ->
     Rules = read_config(),
+    ets:new(?CACHE_TABLE, [named_table]), %% {Flow_sign, Metadata, TimerRef}
     ListenPort = application:get_env(erlflow, port, ?DEFAULT_LISTEN_PORT),
     {ok, Sock} = gen_udp:open(ListenPort, [binary, {active, once}]),
     {ok, #erlflow_state{socket = Sock, rules = Rules}}.
@@ -57,13 +60,17 @@ handle_cast(_Request, State = #erlflow_state{}) ->
     {noreply, State}.
 
 handle_info({udp, Socket, SensorAddress, _SensorPort, Payload}, State = #erlflow_state{rules = Rules}) ->
+    %% TODO add v9, ipfix
     try netflow_v5_codec:decode(Payload) of
         {ok, {#nfh_v5{}, RecordsList}} -> process(SensorAddress, RecordsList, Rules)
     catch _Ex:_Er ->
         %% TODO log
-        io:format("CANT DECODE: ~p~n///~n~p~n", [_Ex, _Er])
+        io:format("Can`t decode: ~p : ~p~n", [_Ex, _Er])
     end,
     inet:setopts(Socket, [{active, once}, binary]),
+    {noreply, State};
+handle_info({timeout, _Tref, {cleanup, Key}}, State = #erlflow_state{}) ->
+    true = ets:delete(?CACHE_TABLE, Key),
     {noreply, State};
 handle_info(_Info, State = #erlflow_state{}) ->
     {noreply, State}.
@@ -100,6 +107,7 @@ parse_rule(RawRule) ->
         (_, _, Acc) -> Acc
     end, #{}, RawRule).
 
+%% TODO add ipv6
 parse_addr(Condition) ->
     {Act, Value} = parse_condition(Condition),
     [Network, Mask] = string:split(Value, "/"),
@@ -149,10 +157,18 @@ parse_condition(Condition) ->
 
 process(SensorAddress, RecordsList, Rules) ->
     lists:foreach(fun(FlowRec) ->
-        %% TODO add cache #{flow_sign => MetaData}
-        case match_rules(SensorAddress, FlowRec, Rules) of
-            reject -> skip;
-            {ok, MetaData} -> erlflow_collector:flow_info(FlowRec, MetaData)
+        Key = ?FLOW_SIGN(FlowRec),
+        case ets:lookup(?CACHE_TABLE, Key) of
+            [{_, MetaData, OldTref}] ->
+                erlflow_collector:flow_info(FlowRec, MetaData),
+                erlang:cancel_timer(OldTref),
+                Tref = erlang:start_timer(?INACTIVITY_TIMEOUT, self(), {cleanup, Key}),
+                ets:insert(?CACHE_TABLE, {Key, MetaData, Tref});
+            [] ->
+                MetaData = match_rules(SensorAddress, FlowRec, Rules),
+                erlflow_collector:flow_info(FlowRec, MetaData),
+                Tref = erlang:start_timer(?INACTIVITY_TIMEOUT, self(), {cleanup, Key}),
+                ets:insert(?CACHE_TABLE, {Key, MetaData, Tref})
         end
     end, RecordsList).
 
@@ -164,7 +180,8 @@ match_rules(SensorAddress, FlowRec, [Rule | Rest]) ->
                 {action, reject} -> reject;
                 {action, #{key_suffix := Suffix, attributes := Attrs, ext_attributes := ExtAttrs}} ->
                     VectorAttributes = assemble_attributes(Attrs, ExtAttrs, FlowRec, SensorAddress),
-                    {ok, {Suffix, VectorAttributes}}
+                    {Suffix, VectorAttributes}
+                    %% TODO may be passing all rules ???
             end;
         false ->
             match_rules(SensorAddress, FlowRec, Rest)
@@ -176,6 +193,7 @@ match(Rule, FlowRec) ->
 match(_Rule, _FlowRec, false) -> false;
 match([], _FlowRec, Result) -> Result;
 match([{action, _} | Rest], FlowRec, Acc) -> match(Rest, FlowRec, Acc);
+%%=============== TODO add ipv6
 match([{src_addr, {match, {Net, Mask}}} | Rest], #nfrec_v5{src_addr = Addr} = FlowRec, _) ->
     BinIP = to_binary_ip(Addr),
     match(Rest, FlowRec, <<Net:Mask/bits>> =:= <<BinIP:Mask/bits>>);
@@ -188,6 +206,7 @@ match([{dst_addr, {match, {Net, Mask}}} | Rest], #nfrec_v5{dst_addr = Addr} = Fl
 match([{dst_addr, {dismatch, {Net, Mask}}} | Rest], #nfrec_v5{dst_addr = Addr} = FlowRec, _) ->
     BinIP = to_binary_ip(Addr),
     match(Rest, FlowRec, <<Net:Mask/bits>> =/= <<BinIP:Mask/bits>>);
+%%==============
 match([{proto, {match, ProtoExpected}} | Rest], #nfrec_v5{prot = Proto} = FlowRec, _) ->
     match(Rest, FlowRec, ProtoExpected =:= Proto);
 match([{proto, {dismatch, ProtoExpected}} | Rest], #nfrec_v5{prot = Proto} = FlowRec, _) ->
@@ -234,6 +253,7 @@ assemble_attributes(Attrs, ExtAttrs, FlowRec, SensorAddress) ->
     end, #{}, Attrs),
     maps:merge(BaseAttrs#{sensor => to_string_ip(SensorAddress)}, maps:without(?ALL_ATTRS, ExtAttrs)).
 
+%% TODO add ipv6
 to_binary_ip({Octet1, Octet2, Octet3, Octet4}) ->
     <<Octet1:8, Octet2:8, Octet3:8, Octet4:8>>;
 to_binary_ip(RawData) when is_integer(RawData) ->
