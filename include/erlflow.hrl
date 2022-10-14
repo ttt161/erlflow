@@ -1,0 +1,1 @@
+-define(INACTIVITY_TIMEOUT, 300000).
