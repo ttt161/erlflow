@@ -1,0 +1,13 @@
+- dst_addr:
+    match: 10.0.0.254/32
+  action:
+    key_suffix: _vector1
+    attributes:
+      - dst_addr
+
+- src_addr:
+    match: 11.0.0.0/24
+  action:
+    key_suffix: _vector2
+    attributes:
+      - src_addr
