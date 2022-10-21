@@ -31,26 +31,34 @@ erlflow предназначен не столько для сбора стат�
 медиа-трафика используется диапазон портов 40000-40100. Задача: отслеживать нагрузку на сеть по всем межсерверным 
 соединениям попарно, нагрузку от клиентов суммировать по каждому серверу отдельно.
 
+![scheme](https://codeberg.org/ttt161/erlflow/src/branch/ERLFLOW-3/pic/scheme.png)
+
 Решение
 =====
 Для решения задачи нам нужно описать правила фильтрации потоков, а также правила формирования меток для метрик.
 
 Фильтр для межсерверного взаимодействие описывается следующим набором условий:
+```
 src_addr=100.127.0.0/24 dst_addr=100.127.0.0/24 proto=tcp port=5080 (параметр port описан ниже)
 src_addr=100.127.0.0/24 dst_addr=100.127.0.0/24 proto=udp src_port=40000-41900 dst_port=40000-41900
+```
 Для попадания статистики переданных пакетов/байт в одну метрику мы должны оставить значимые параметры 
 (src_addr, dst_addr, так как задача учесть все взаимодействия попарно) и исключить динамически меняющиеся 
 (proto, port, src_port, dst_port, tos). Вместо исключенных параметров необходимо добавить дополнительную метку (или метки), 
 которые позволят идентифицировать метрику, как взаимодействие SIP серверов, например, application="SIP",direction="service-service"
 
 Фильтр для взаимодействия клиент -> сервер:
+```
 src_addr!=88.127.127.0/24 dst_addr=88.127.127.0/24 proto=udp dst_port=5060
 src_addr!=88.127.127.0/24 dst_addr=88.127.127.0/24 proto=udp src_port=40000-41900 dst_port=40000-41900
+```
 Значимые параметры: dst_addr. Дополнительные метки: application="SIP",direction="client-service" 
 
 Фильтр для взаимодействия сервер -> клиент:
+```
 src_addr=88.127.127.0/24 dst_addr!=88.127.127.0/24 proto=udp src_port=5060
 src_addr=88.127.127.0/24 dst_addr!=88.127.127.0/24 proto=udp src_port=40000-41900 dst_port=40000-41900
+```
 Значимые параметры: src_addr. Дополнительные метки: application="SIP",direction="service-client" 
 
 Реализация
@@ -162,7 +170,9 @@ src_addr=88.127.127.0/24 dst_addr!=88.127.127.0/24 proto=udp src_port=40000-4190
       application: SIP
       direction: service-client
 ```
-Таким образом, для нашего примера независимо от того, сколько параллельных соединений установят сервера между собой и сколько бы ни было клиентских соединений мы получим 12 временных рядов:
+Таким образом, для нашего примера независимо от того, сколько параллельных соединений установят сервера между собой и 
+сколько бы ни было клиентских соединений мы получим 12 временных рядов (и еще 12 с ключом netflow_packets_sent_):
+````
 netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.2",application="SIP",direction="service-service"}
 netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.3",application="SIP",direction="service-service"}
 netflow_bytes_sent_sip_srv{src_addr="100.127.0.2",dst_addr="100.127.0.1",application="SIP",direction="service-service"}
@@ -177,8 +187,9 @@ netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.3",application="SIP",direct
 netflow_bytes_sent_sip_downstream{src_addr="88.127.127.1",application="SIP",direction="service-client"}
 netflow_bytes_sent_sip_downstream{src_addr="88.127.127.2",application="SIP",direction="service-client"}
 netflow_bytes_sent_sip_downstream{src_addr="88.127.127.3",application="SIP",direction="service-client"}
+````
 
-(И еще 12 с ключом netflow_packets_sent_)
+![metrics](https://codeberg.org/ttt161/erlflow/src/branch/ERLFLOW-3/pic/metrics.png)
 
 При добавлении новых серверов, если они будут функционировать в тех же сетях, не потребуется правка конфигурационного файла, метрики будут появляться автоматически (хорошая практика, когда планирование сети и мониторинга идут рука об руку)))
 
