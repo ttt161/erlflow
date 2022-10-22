@@ -31,7 +31,7 @@ erlflow предназначен не столько для сбора стат�
 медиа-трафика используется диапазон портов 40000-40100. Задача: отслеживать нагрузку на сеть по всем межсерверным 
 соединениям попарно, нагрузку от клиентов суммировать по каждому серверу отдельно.
 
-![scheme](https://codeberg.org/ttt161/erlflow/src/branch/ERLFLOW-3/pic/scheme.png)
+![scheme](https://codeberg.org/ttt161/erlflow/raw/branch/master/pic/scheme.png)
 
 Решение
 =====
@@ -189,7 +189,7 @@ netflow_bytes_sent_sip_downstream{src_addr="88.127.127.2",application="SIP",dire
 netflow_bytes_sent_sip_downstream{src_addr="88.127.127.3",application="SIP",direction="service-client"}
 ````
 
-![metrics](https://codeberg.org/ttt161/erlflow/src/branch/ERLFLOW-3/pic/metrics.png)
+![metrics](https://codeberg.org/ttt161/erlflow/raw/branch/master/pic/metrics.png)
 
 При добавлении новых серверов, если они будут функционировать в тех же сетях, не потребуется правка конфигурационного 
 файла, метрики будут появляться автоматически (хорошая практика, когда планирование сети и мониторинга идут рука об руку)))
