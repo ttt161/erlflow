@@ -4,6 +4,7 @@
   port:
     match: 5060
   action:
+    key_suffix: _sip_srv
     attributes:
       - src_addr
       - dst_addr
@@ -15,6 +16,7 @@
   port:
     match: 40000-40102
   action:
+    key_suffix: _sip_srv
     attributes:
       - src_addr
       - dst_addr
@@ -37,6 +39,7 @@
   tos:
     match: 0
   action:
+    key_suffix: _some_srv
     attributes:
       - src_addr
       - dst_addr
@@ -58,6 +61,7 @@
   port:
     match: 22
   action:
+    key_suffix: _some_suffix
     ext_attributes:
       some.attr.name: 333
 
@@ -68,12 +72,13 @@
   proto:
     match: 6
   port:
-    match: 22
+    match: 2222
   action: reject
 
 # default action
 - src_addr:
     match: 0.0.0.0/0
   action:
+    key_suffix: _
     ext_attributes:
       ext_description: unclassified
