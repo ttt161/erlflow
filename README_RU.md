@@ -22,7 +22,7 @@ erlflow предназначен не столько для сбора стат�
 неудобства при дальнейшей обработке информации. Гораздо более удобным представляется введение понятия 
 "направление взаимодействия", которое, в зависимости от задачи, может расширять понятие "потока". Например, можно считать 
 все пакеты/байты, переданные между хостами, без учета остальных параметров, или учесть пакеты/байты переданные одним 
-прилижением в одной метрике, а остальные учесть в другой или вообще не учитывать. 
+приложением в одной метрике, а остальные учесть в другой или вообще не учитывать. 
 
 Пример:
 Допустим имеется сеть из нескольких инстансов SIP-серверов. Сервера взаимодействую по "внутренней" сети 100.127.0.0/24, 
@@ -35,7 +35,7 @@ erlflow предназначен не столько для сбора стат�
 
 Решение
 =====
-Для решения задачи нам нужно описать правила фильтрации потоков, а также правила формирования меток для метрик.
+Для решения задачи нам нужно описать правила фильтрации (группировки) потоков, а также правила формирования меток для метрик.
 
 Фильтр для межсерверного взаимодействие описывается следующим набором условий:
 ```
@@ -173,20 +173,20 @@ src_addr=88.127.127.0/24 dst_addr!=88.127.127.0/24 proto=udp src_port=40000-4190
 Таким образом, для нашего примера независимо от того, сколько параллельных соединений установят сервера между собой и 
 сколько бы ни было клиентских соединений мы получим 12 временных рядов (и еще 12 с ключом netflow_packets_sent_):
 ````
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.2",application="SIP",direction="service-service"}
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.3",application="SIP",direction="service-service"}
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.2",dst_addr="100.127.0.1",application="SIP",direction="service-service"}
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.2",dst_addr="100.127.0.3",application="SIP",direction="service-service"}
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.3",dst_addr="100.127.0.1",application="SIP",direction="service-service"}
-netflow_bytes_sent_sip_srv{src_addr="100.127.0.3",dst_addr="100.127.0.2",application="SIP",direction="service-service"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.2",application="SIP",direction="service-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.1",dst_addr="100.127.0.3",application="SIP",direction="service-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.2",dst_addr="100.127.0.1",application="SIP",direction="service-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.2",dst_addr="100.127.0.3",application="SIP",direction="service-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.3",dst_addr="100.127.0.1",application="SIP",direction="service-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_srv{src_addr="100.127.0.3",dst_addr="100.127.0.2",application="SIP",direction="service-service",sensor="127.0.0.1"}
 
-netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.1",application="SIP",direction="client-service"}
-netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.2",application="SIP",direction="client-service"}
-netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.3",application="SIP",direction="client-service"}
+netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.1",application="SIP",direction="client-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.2",application="SIP",direction="client-service",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.3",application="SIP",direction="client-service",sensor="127.0.0.1"}
 
-netflow_bytes_sent_sip_downstream{src_addr="88.127.127.1",application="SIP",direction="service-client"}
-netflow_bytes_sent_sip_downstream{src_addr="88.127.127.2",application="SIP",direction="service-client"}
-netflow_bytes_sent_sip_downstream{src_addr="88.127.127.3",application="SIP",direction="service-client"}
+netflow_bytes_sent_sip_downstream{src_addr="88.127.127.1",application="SIP",direction="service-client",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_downstream{src_addr="88.127.127.2",application="SIP",direction="service-client",sensor="127.0.0.1"}
+netflow_bytes_sent_sip_downstream{src_addr="88.127.127.3",application="SIP",direction="service-client",sensor="127.0.0.1"}
 ````
 
 ![metrics](https://codeberg.org/ttt161/erlflow/raw/branch/master/pic/metrics.png)
@@ -219,7 +219,7 @@ match, для сравнения на несовпадение - dismatch.
    match: 10.0.0.0/24
 ````
 - dst_addr, адрес назначения, условие задается аналогично src_addr
-- src_port, порт источника, может принимать одно значение или диапазон, значение должно быть в диапазоне 1-65535
+- src_port, порт источника, условие может принимать одно значение или диапазон, значение должно быть в диапазоне 1-65535
 - dst_port, порт назначения, аналогично src_port
 Пример:
 ````
