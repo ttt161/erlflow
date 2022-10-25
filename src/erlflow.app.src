@@ -1,5 +1,5 @@
 {application, erlflow,
- [{description, "An OTP application"},
+ [{description, "Simple netflow to prometheus converter and pre-analyzer"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {erlflow_app, []}},
@@ -14,6 +14,8 @@
   {env,[]},
   {modules, []},
 
-  {licenses, ["Apache 2.0"]},
-  {links, []}
+  {licenses, ["MIT"]},
+  {links, [
+    {"Codeberg", "https://codeberg.org/ttt161/erlflow"}
+  ]}
  ]}.
