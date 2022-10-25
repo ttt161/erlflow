@@ -7,7 +7,6 @@
    [kernel,
     stdlib,
     yamerl,
-    xxhash,
     prometheus,
     cowboy
    ]},

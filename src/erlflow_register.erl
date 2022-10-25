@@ -90,7 +90,7 @@ internal_where([]) -> undefined;
 internal_where([{_Name, Pid}]) -> Pid.
 
 internal_send([], Name, Msg) -> {badarg, {Name, Msg}};
-internal_send([{_Name, Pid}], _Name, Msg) ->
+internal_send([{_, Pid}], _, Msg) ->
     Pid ! Msg,
     Pid.
 

@@ -8,7 +8,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/4]).
+-export([start_link/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
     code_change/3]).
 
@@ -23,7 +23,6 @@
 
 -define(NEW_FLOW, #nfrec_v5{d_pkts = 0, d_octets = 0}).
 
-
 -record(erlflow_collector_state, {
     flows = #{},
     timers = #{},
@@ -37,10 +36,9 @@
 %%%===================================================================
 
 flow_info(_FlowRec, reject) -> skip;
-flow_info(FlowRec, {Suffix, Attributes}) ->
-    Hash = xxhash:hash64(term_to_binary(Attributes)),
-    case erlflow_register:whereis_name(Hash) of
-        undefined -> start(Hash, FlowRec, Attributes, Suffix);
+flow_info(FlowRec, {_Suffix, _Attributes}=ID) ->
+    case erlflow_register:whereis_name(ID) of
+        undefined -> start(ID, FlowRec);
         Pid when is_pid(Pid) -> gen_server:cast(Pid, {flow_info, FlowRec})
     end.
 
@@ -48,11 +46,11 @@ flow_info(FlowRec, {Suffix, Attributes}) ->
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
-start(Hash, FlowRec, Attributes, Suffix) ->
-    supervisor:start_child(erlflow_collector_sup, [Hash, FlowRec, Attributes, Suffix]).
+start(ID, FlowRec) ->
+    supervisor:start_child(erlflow_collector_sup, [ID, FlowRec]).
 
-start_link(Hash, FlowRec, Attributes, Suffix) ->
-    gen_server:start_link({via, erlflow_register, Hash}, ?MODULE, [FlowRec, Attributes, Suffix], []).
+start_link( {Suffix, Attributes}=ID, FlowRec) ->
+    gen_server:start_link({via, erlflow_register, ID}, ?MODULE, [FlowRec, Attributes, Suffix], []).
 
 init([FlowRec, Attributes, Suffix]) ->
     {LabelNames, LabelValues} = lists:unzip(maps:to_list(Attributes)),
