@@ -1,6 +1,6 @@
 {application, erlflow,
  [{description, "Simple netflow to prometheus converter and pre-analyzer"},
-  {vsn, "0.1.0"},
+  {vsn, "1.0.0"},
   {registered, []},
   {mod, {erlflow_app, []}},
   {applications,
