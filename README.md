@@ -161,7 +161,7 @@ Can be overridden in `sys.config`:
 ## 🤝 Contributing
 
 We welcome issues, pull requests, and improvement suggestions!
-Project hosted on Codeberg: [https://github.com/ttt161/erlflow](https://github.com/ttt161/erlflow)
+Project hosted on: [https://github.com/ttt161/erlflow](https://github.com/ttt161/erlflow)
 
 ---
 
