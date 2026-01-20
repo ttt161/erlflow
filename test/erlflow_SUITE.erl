@@ -116,19 +116,19 @@ test(_Config) ->
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V1F1_1},
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V1F1_3},
     timer:sleep(150),
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],128}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],7}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],128}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],7}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
 
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V2F1_1},
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V2F2_1},
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V1F1_2}, %% must be ignored
     timer:sleep(150),
 
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],128}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],7}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],128}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],7}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
 
-    [{[{"sensor","127.0.0.1"},{"src_addr","11.0.0.1"}],84}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector2),
-    [{[{"sensor","127.0.0.1"},{"src_addr","11.0.0.1"}],8}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector2),
+    [{[{sensor,"127.0.0.1"},{src_addr,"11.0.0.1"}],84}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector2),
+    [{[{sensor,"127.0.0.1"},{src_addr,"11.0.0.1"}],8}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector2),
 
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V1F2_1},
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V1F2_2},
@@ -136,8 +136,8 @@ test(_Config) ->
     Pid ! {udp, Socket, <<127,0,0,1>>, 9999, V2F2_2},
     timer:sleep(150),
 
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],199}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
-    [{[{"dst_addr","10.0.0.254"},{"sensor","127.0.0.1"}],14}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],199}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector1),
+    [{[{dst_addr,"10.0.0.254"},{sensor,"127.0.0.1"}],14}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector1),
 
-    [{[{"sensor","127.0.0.1"},{"src_addr","11.0.0.1"}],176}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector2),
-    [{[{"sensor","127.0.0.1"},{"src_addr","11.0.0.1"}],24}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector2).
+    [{[{sensor,"127.0.0.1"},{src_addr,"11.0.0.1"}],176}] = prometheus_counter:values(erlflow, netflow_bytes_sent_vector2),
+    [{[{sensor,"127.0.0.1"},{src_addr,"11.0.0.1"}],24}] = prometheus_counter:values(erlflow, netflow_packets_sent_vector2).
