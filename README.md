@@ -1,22 +1,21 @@
-# Erlang Flow Aggregator (erlflow)
+# Erlang NetFlow Aggregator (erlflow)
 
 **erlflow** — a high-performance NetFlow v5 aggregator and analyzer designed to transform raw network flow data into structured, easily analyzable metrics with support for tagging and flexible grouping. This tool reduces the number of time series by grouping flows based on logical rules and integrates seamlessly with monitoring systems like Prometheus.
 
 ---
 
-## 🎯 Key Features
+## Key Features
 
-- ✅ **NetFlow v5 flow grouping** based on customizable rules
-- ✅ **Dynamic metric tagging** with support for static and dynamic labels
-- ✅ **Flexible filtering** by IP, ports, protocols, ToS, and other parameters
-- ✅ **Automatic scalability** — metrics appear automatically as new nodes join the network
-- ✅ **Prometheus integration** — ready-to-use metrics for collection and visualization
-- ✅ **YAML-based configuration** — clear and powerful filtering rules
-- ✅ **Flow rejection support** — ignore irrelevant flows using the `reject` action
+- **NetFlow v5 flow grouping** based on customizable rules
+- **Dynamic metric tagging** with support for static and dynamic labels
+- **Flexible filtering** by IP, ports, protocols, ToS, and other parameters
+- **Automatic scalability** — metrics appear automatically as new nodes join the network
+- **Prometheus integration** — ready-to-use metrics for collection and visualization
+- **YAML-based configuration** — clear and powerful filtering rules
 
 ---
 
-## 📦 Use Case Example
+## Use Case Example
 
 ### Scenario: Monitoring SIP Infrastructure
 A cluster of SIP servers with the following setup:
@@ -58,7 +57,7 @@ netflow_bytes_sent_sip_upstream{dst_addr="88.127.127.1",application="SIP",direct
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Configuration File Format
 The default configuration file is `config/config.yml`. The path can be overridden in `sys.config` via the `config_path` parameter.
@@ -109,7 +108,7 @@ action: reject
 
 ---
 
-## 📊 Output Metric Format
+## Output Metric Format
 
 erlflow generates Prometheus-style metrics:
 
@@ -124,7 +123,7 @@ Where:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **Install dependencies** (Erlang/OTP, rebar3)
 2. **Clone the repository**:
@@ -142,7 +141,7 @@ Where:
 
 ---
 
-## 🔧 Advanced Settings
+## Advanced Settings
 
 ### Ephemeral Port Range
 Default: `49152-65535`.
@@ -158,20 +157,20 @@ Can be overridden in `sys.config`:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome issues, pull requests, and improvement suggestions!
 Project hosted on: [https://github.com/ttt161/erlflow](https://github.com/ttt161/erlflow)
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## ⚡ Performance
+## Performance
 
 erlflow is built on Erlang/OTP and leverages:
 - **BEAM VM** for parallel flow processing
@@ -181,7 +180,7 @@ erlflow is built on Erlang/OTP and leverages:
 
 ---
 
-### 🎯 Summary
+### Summary
 
 **erlflow** is ideal for:
 - monitoring inter-service traffic
